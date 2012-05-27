@@ -15,13 +15,16 @@ def create_graph
   graph_exists = neo.get_node_properties(1)
   return if graph_exists && graph_exists['name']
   commands = []
-  
-  items = %w[AlchemyDB CouchDB Cassandra Datomic Dex 
-             Hadoop Hypertable InfiniteGraph InfoGrid Membase 
-             MongoDB Neo4j OrientDB RavenDB Redis 
-             Riak Scalaris SimpleDB Tokyo-Cabinet Voldemort]
-  
-              
+
+  tags = %w[KeyValue Column Document Graph]  
+
+  tags.each{ |n| commands << [:create_node, {"name" => n}]}
+
+  items = %w[AlchemyDB Membase Redis Riak Scalaris Tokyo-Cabinet Voldemort
+             Cassandra Hadoop Hypertable SimpleDB 
+             CouchDB MongoDB RavenDB  
+             Datomic Dex InfiniteGraph InfoGrid Neo4j OrientDB]
+                
   items.each{ |n| commands << [:create_node, {"name" => n}]}
 
   users = %w[Aaron Achyuta Adam Adel Agam Alex Allison Amit Andreas Andrey 
@@ -37,19 +40,44 @@ def create_graph
              
   users.each{ |n| commands << [:create_node, {"name" => n}]}
 
+  tags.each_index do |tag|
+    tag_id = tag
+    commands << [:add_node_to_index, "tags_index", "name", tags[tag], "{#{tag_id}}"]
+
+    # create tags relationships
+    case tag_id
+      when 0
+        (0..6).each do |item|
+          commands << [:create_relationship, "tagged", "{#{tag_id}}", "{#{tags.size + item}}"]
+        end
+      when 1
+        (7..10).each do |item|
+          commands << [:create_relationship, "tagged", "{#{tag_id}}", "{#{tags.size + item}}"]
+        end
+      when 2
+        (11..13).each do |item|
+          commands << [:create_relationship, "tagged", "{#{tag_id}}", "{#{tags.size + item}}"]
+        end
+      when 3
+        (14..19).each do |item|
+          commands << [:create_relationship, "tagged", "{#{tag_id}}", "{#{tags.size + item}}"]
+        end
+      end
+  end
+
   items.each_index do |item|
-    commands << [:add_node_to_index, "items_index", "name", items[item], "{#{item}}"]
+    item_id = item + tags.size
+    commands << [:add_node_to_index, "items_index", "name", items[item], "{#{item_id}}"]
   end
 
   users.each_index do |user| 
-    user_id = user + items.size
+    user_id = user + items.size + tags.size
     commands << [:add_node_to_index, "users_index", "type", users[user], "{#{user_id}}"]
-    connected = []
 
     # create likes relationships
-    
     likes = items.map{|n| items.index(n)}.sample(1 + rand(5))
-    likes.each do |item_id|
+    likes.each do |item|
+      item_id = tags.size + item
       commands << [:create_relationship, "likes", "{#{user_id}}", "{#{item_id}}", {:weight => 1 + rand(5)}]
     end    
    end
